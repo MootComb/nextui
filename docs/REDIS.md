@@ -18,10 +18,10 @@ Redis is used as the primary data store. All data is stored as Hash, Set, String
 | `username` | string | Username |
 | `password_hash` | string | Argon2id password hash |
 | `role` | string | Role: `admin` or `user` |
-| `enabled` | string | `"1"` or `"0"` |
+| `enabled` | string | User enabled |
 | `totp_enabled` | string | TOTP enabled |
 | `webauthn_enabled` | string | WebAuthn enabled |
-| `totp_secret` | string | TOTP secret (base32) |
+| `totp_secret` | string | TOTP secret |
 | `webauthn_credentials` | string | JSON array of WebAuthn data |
 | `multiple_token` | string | Token for multiple devices |
 | `single_token` | string | Token for single devices |
@@ -70,8 +70,8 @@ SET user_index:token:ZJ0pjo5nblla8xE4SeTyPAqY "0:single"
 | `last_activity` | string | Unix timestamp (ms) |
 | `created_at` | string | Unix timestamp (ms) |
 | `expires_at` | string | Unix timestamp (ms) |
-| `long_lived` | string | `"1"` or `"0"` |
-| `active` | string | `"1"` or `"0"` |
+| `long_lived` | string | Session long-term |
+| `active` | string | Session online |
 | `lockdown_enabled` | string | Lockdown enabled |
 | `lockdown` | string | Session locked |
 | `lockdown_webauthn` | string | WebAuthn required to unlock |
@@ -107,7 +107,7 @@ SADD session_index:user:1 "session_abc123"
 |------|-----|----------|
 | `simple_name` | string | Device name |
 | `simple_system` | string | OS (linux, android, windows) |
-| `simple_online` | string | `"1"` or `"0"` |
+| `simple_online` | string | Device online |
 | `simple_cpu` | string | CPU usage (%) |
 | `simple_memory` | string | Memory usage (%) |
 | `simple_disk` | string | Disk usage (%) |
@@ -174,9 +174,9 @@ SADD session_index:user:1 "session_abc123"
 |------|-----|----------|
 | `user_id` | string | Owner ID |
 | `name` | string | Key name |
-| `type` | string | `regular` or `ssh` |
+| `type` | string | Type key |
 | `public_key` | string | Public key (for SSH) |
-| `active` | string | `"1"` or `"0"` |
+| `active` | string | Key enabled |
 | `permissions` | string | JSON with permissions |
 | `created_at` | string | Unix timestamp (ms) |
 | `expires_at` | string | Unix timestamp (ms) |
