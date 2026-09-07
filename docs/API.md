@@ -2,7 +2,7 @@
 
 ## Overview
 
-NextUI provides a REST API for managing devices, users, and the system. All API requests use a single endpoint with authentication via API keys.
+REST API is used for managing devices, users, and the system. All API requests use a single endpoint and are authenticated via API keys.
 
 ## Basic Settings
 
@@ -536,12 +536,3 @@ getDevices().then(data => console.log(data));
 |------------|-------|
 | Maximum request size | 1 MB |
 | Maximum command length | 4096 characters |
-
----
-
-## Security Notes
-
-1. **API keys** must be stored in a secure location and never transmitted in plain text.
-2. It is recommended to use **HTTPS** for all API requests.
-3. **Privileged Access** should only be granted to trusted users.
-4. Regularly **rotate API keys** and remove unused ones.
