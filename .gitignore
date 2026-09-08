@@ -1,0 +1,51 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+build/
+target/
+binaries/
+*.o
+*.a
+*.elf
+*.app
+
+
+# Build and artifacts
+dist/
+build/
+out/
+out-esbuild/
+out-test/
+out-benchmark/
+*.tmp
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Database dumps and archives
+*.zip
+*.tar.gz
+*.7z
+*.rar
+*.dfs
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets
+.env
+.env.local
+.env.vapid
+*.key
+*.pem
+*.log
+
+# Editor
+.vscode/
