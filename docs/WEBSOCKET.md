@@ -81,13 +81,18 @@ WebSocket is used for real-time communication between the browser and the server
         "enabled": true,
         "totp_enabled": false,
         "webauthn_enabled": false,
-        "global_devices": true
+        "global_devices": true,
+        "isAdmin": true
     },
     "sessions": { ... },
     "api_keys": { ... },
     "policy": { ... },
     "tokens": { ... },
-    "settings": { ... }
+    "settings": { ... },
+    "notify": { ... },
+    "lockdown": { ... },
+    "groups": { ... },
+    "users": [ ... ]
 }
 ```
 
@@ -157,6 +162,21 @@ WebSocket is used for real-time communication between the browser and the server
 
 ---
 
+### `/auth/totp/verify` — Verify TOTP
+
+```json
+{
+    "endpoint": "/auth/totp/verify",
+    "data": {
+        "code": "123456",
+        "action": "enable",
+        "secret": "JBSWY3DPEHPK3PXP"
+    }
+}
+```
+
+---
+
 ### `/auth/totp/generate` — Generate TOTP
 
 ```json
@@ -172,21 +192,6 @@ WebSocket is used for real-time communication between the browser and the server
     "success": true,
     "secret": "JBSWY3DPEHPK3PXP",
     "provisioning_uri": "otpauth://totp/NextUI:admin?secret=..."
-}
-```
-
----
-
-### `/auth/totp/verify` — Verify TOTP
-
-```json
-{
-    "endpoint": "/auth/totp/verify",
-    "data": {
-        "code": "123456",
-        "action": "enable",
-        "secret": "JBSWY3DPEHPK3PXP"
-    }
 }
 ```
 
@@ -270,6 +275,19 @@ WebSocket is used for real-time communication between the browser and the server
 
 ---
 
+### `/auth/session/longlived` — Long-Lived Session
+
+```json
+{
+    "endpoint": "/auth/session/longlived",
+    "data": {
+        "long_lived": true
+    }
+}
+```
+
+---
+
 ### `/auth/login-as` — Login as Another User
 
 ```json
@@ -283,7 +301,279 @@ WebSocket is used for real-time communication between the browser and the server
 
 ---
 
-## 4.2. Security
+### `/auth/quick/info` — Get Quick Login Info
+
+```json
+{
+    "endpoint": "/auth/quick/info",
+    "data": {
+        "user_code": "ABC123"
+    }
+}
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "info": {
+        "screenResolution": "1920x1080",
+        "timezone": "Europe/Moscow",
+        "userAgent": "Mozilla/5.0 ...",
+        "platform": "Windows",
+        "ip": "192.168.1.100",
+        "location": "RU, Moscow"
+    },
+    "expires_at": 1234567890
+}
+```
+
+**Errors:**
+- `400` — user_code required
+- `429` — Too many attempts
+- `404` — Invalid or expired code
+- `409` — Code already processed / Code is already being watched in another session
+
+---
+
+### `/auth/quick/accept` — Accept Quick Login
+
+```json
+{
+    "endpoint": "/auth/quick/accept",
+    "data": {
+        "user_code": "ABC123"
+    }
+}
+```
+
+**Errors:**
+- `400` — user_code required
+- `429` — Too many attempts
+- `404` — Invalid or expired code
+- `409` — Code already processed
+
+---
+
+### `/auth/quick/reject` — Reject Quick Login
+
+```json
+{
+    "endpoint": "/auth/quick/reject",
+    "data": {
+        "user_code": "ABC123"
+    }
+}
+```
+
+**Errors:**
+- `400` — user_code required
+- `404` — Invalid or expired code
+- `409` — Code already processed
+
+---
+
+### `/auth/quick/unsubscribe` — Unsubscribe from Quick Code
+
+```json
+{
+    "endpoint": "/auth/quick/unsubscribe",
+    "data": {
+        "user_code": "ABC123"
+    }
+}
+```
+
+**Errors:**
+- `400` — user_code required
+
+---
+
+## 4.2. Groups
+
+### `/groups/create` — Create Group
+
+```json
+{
+    "endpoint": "/groups/create",
+    "data": {
+        "name": "My Devices",
+        "color": "#bb86fc",
+        "icon": "fa-folder"
+    }
+}
+```
+
+**Limits:**
+- Group name: max 32 characters
+- Max 50 groups per user
+- Group name must be unique per user
+
+**Errors:**
+- `400` — Group name is required / Group name max N characters / Invalid color format / Icon name too long / Maximum N groups reached / Group name already exists
+- `500` — Failed to save group
+
+---
+
+### `/groups/update` — Update Group
+
+```json
+{
+    "endpoint": "/groups/update",
+    "data": {
+        "groupId": "grp_1234567890_abc12",
+        "name": "New Name",
+        "color": "#ff5722",
+        "icon": "fa-star"
+    }
+}
+```
+
+**Errors:**
+- `400` — groupId is required / Group name cannot be empty / Group name max N characters / Group name already exists / Invalid color format / Icon name too long
+- `404` — Group not found
+- `500` — Failed to save group
+
+---
+
+### `/groups/delete` — Delete Group
+
+```json
+{
+    "endpoint": "/groups/delete",
+    "data": {
+        "groupId": "grp_1234567890_abc12"
+    }
+}
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "groupId": "grp_1234567890_abc12",
+    "affectedDevices": ["device1", "device2"]
+}
+```
+
+**Errors:**
+- `400` — groupId is required
+- `404` — Group not found
+- `500` — Failed to save groups
+
+---
+
+### `/groups/assign` — Assign Devices to Groups
+
+```json
+{
+    "endpoint": "/groups/assign",
+    "data": {
+        "deviceId": "7LgjUE6hcgYawTjj",
+        "groupId": "grp_1234567890_abc12"
+    }
+}
+```
+
+**Multiple assignment:**
+```json
+{
+    "endpoint": "/groups/assign",
+    "data": {
+        "deviceIds": ["device1", "device2"],
+        "groupIds": ["grp_1", "grp_2"]
+    }
+}
+```
+
+**Limits:**
+- Max 100 devices per request
+- Max 10 groups per request
+
+**Response:**
+```json
+{
+    "success": true,
+    "assigned": [
+        { "deviceId": "device1", "groupId": "grp_1" }
+    ],
+    "failed": [
+        { "deviceId": "device2", "groupId": "grp_2", "error": "Device not found" }
+    ]
+}
+```
+
+**Errors:**
+- `400` — deviceId or deviceIds is required / groupId or groupIds is required / Max N devices per request / Max N groups per request
+- `500` — Failed to save groups
+
+---
+
+### `/groups/unassign` — Unassign Devices from Groups
+
+```json
+{
+    "endpoint": "/groups/unassign",
+    "data": {
+        "deviceId": "7LgjUE6hcgYawTjj",
+        "groupId": "grp_1234567890_abc12"
+    }
+}
+```
+
+**Multiple unassignment:**
+```json
+{
+    "endpoint": "/groups/unassign",
+    "data": {
+        "deviceIds": ["device1", "device2"],
+        "groupIds": ["grp_1", "grp_2"]
+    }
+}
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "unassigned": [
+        { "deviceId": "device1", "groupId": "grp_1" }
+    ]
+}
+```
+
+**Errors:**
+- `400` — deviceId or deviceIds is required / groupId or groupIds is required / Max N devices per request / Max N groups per request
+- `500` — Failed to save groups
+
+---
+
+### `/groups/reorder` — Reorder Groups
+
+```json
+{
+    "endpoint": "/groups/reorder",
+    "data": {
+        "groupIds": ["grp_1", "grp_2", "grp_3"]
+    }
+}
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "order": ["grp_1", "grp_2", "grp_3"]
+}
+```
+
+**Errors:**
+- `400` — groupIds array is required / groupIds must contain all user's groups / Unknown groupId: N
+- `500` — Failed to save order
+
+---
+
+## 4.3. Security
 
 ### `/lockdown` — Lockdown Management
 
@@ -330,9 +620,15 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
+**Errors:**
+- `400` — Cannot enable lockdown: no 2FA methods configured for this user / WebAuthn is not enabled for this user / TOTP is not enabled for this user / Cannot disable all 2FA methods while lockdown is active / Lockdown mode is not enabled for this session / Cannot lock session: no 2FA methods configured / No valid settings to update / Unknown action
+- `401` — No active session
+- `404` — User not found
+- `500` — Failed to enable/disable/update lockdown
+
 ---
 
-## 4.3. Users
+## 4.4. Users
 
 ### `/users/list` — List Users
 
@@ -342,6 +638,34 @@ WebSocket is used for real-time communication between the browser and the server
     "data": {}
 }
 ```
+
+**Response:**
+```json
+{
+    "success": true,
+    "users": [
+        {
+            "id": 1,
+            "username": "admin",
+            "role": "admin",
+            "enabled": true,
+            "totp_enabled": false,
+            "webauthn_enabled": false,
+            "global_devices": true,
+            "created_at": 1234567890,
+            "can_create_api_keys": true,
+            "can_add_devices": true,
+            "max_devices": -1,
+            "max_api_keys": -1
+        }
+    ]
+}
+```
+
+**Errors:**
+- `403` — Admin privileges required
+- `404` — User not found
+- `500` — Failed to get users list
 
 ---
 
@@ -356,10 +680,37 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
+**Errors:**
+- `400` — User ID is required
+- `403` — Admin privileges required
+- `404` — User not found / Current user not found
+
 ---
 
 ### `/users/save` — Save User
 
+**Create new user (userId: 0):**
+```json
+{
+    "endpoint": "/users/save",
+    "data": {
+        "userId": 0,
+        "username": "new_user",
+        "password": "password123",
+        "role": "user",
+        "enabled": true,
+        "totp_enabled": false,
+        "webauthn_enabled": false,
+        "global_devices": false,
+        "can_create_api_keys": true,
+        "can_add_devices": true,
+        "max_devices": 10,
+        "max_api_keys": 5
+    }
+}
+```
+
+**Update existing user:**
 ```json
 {
     "endpoint": "/users/save",
@@ -380,6 +731,12 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
+**Errors:**
+- `400` — Username and password are required / invalid username/password / Username already exists / Failed to save user
+- `403` — Admin privileges required / Cannot modify host user
+- `404` — Current user not found / User not found
+- `500` — Failed to get updated user data
+
 ---
 
 ### `/users/delete` — Delete User
@@ -393,9 +750,62 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
+**Errors:**
+- `400` — User ID is required / Cannot delete yourself
+- `403` — Admin privileges required / Cannot delete host user
+- `500` — Failed to delete user
+
 ---
 
-## 4.4. Devices
+## 4.5. Devices
+
+### `/devices/tokens/refresh` — Refresh Tokens
+
+```json
+{
+    "endpoint": "/devices/tokens/refresh",
+    "data": {}
+}
+```
+
+**Errors:**
+- `404` — User not found
+- `500` — Failed to refresh tokens
+
+---
+
+### `/devices/tokens/policy` — Token Policy
+
+```json
+{
+    "endpoint": "/devices/tokens/policy",
+    "data": {
+        "action": "update",
+        "allow_url_token": true,
+        "allowed_platforms": {
+            "linux": true,
+            "windows": true,
+            "android": true
+        },
+        "time_restrictions": {
+            "enabled": true,
+            "limit_minutes": 5
+        },
+        "usage_restrictions": {
+            "enabled": true,
+            "max_uses": 5
+        }
+    }
+}
+```
+
+**Errors:**
+- `400` — No valid fields to update / Invalid action. Use: get or update
+- `403` — Token policy management is disabled for this user
+- `404` — User not found
+- `500` — Failed to update policy / Failed to get updated policy
+
+---
 
 ### `/devices/list` — List Devices
 
@@ -423,6 +833,10 @@ WebSocket is used for real-time communication between the browser and the server
     ]
 }
 ```
+
+**Errors:**
+- `403` — User account is disabled / Invalid admin session
+- `404` — User not found
 
 ---
 
@@ -472,6 +886,10 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
+**Errors:**
+- `400` — Device ID is required
+- `404` — Device not found
+
 ---
 
 ### `/devices/rename` — Rename Device
@@ -486,6 +904,12 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
+**Errors:**
+- `400` — Device ID is required / New name is required / invalid device name
+- `403` — Permission denied: need 'danger' right to rename device
+- `404` — Device not found
+- `500` — Failed to rename device
+
 ---
 
 ### `/devices/remove` — Remove Device
@@ -498,6 +922,11 @@ WebSocket is used for real-time communication between the browser and the server
     }
 }
 ```
+
+**Errors:**
+- `400` — Device ID is required
+- `403` — Permission denied: need 'danger' right to remove device
+- `500` — Failed to remove device
 
 ---
 
@@ -523,6 +952,28 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
+**Special command prefixes:**
+- `webhook:add|command` — add webhook
+- `webhook:remove|webhook_id` — remove webhook
+- `stream:type:on|off` — stream control
+- `policy:setting|true|false|toggle` — policy management
+- `interval:type|value` — interval management
+- `users:add|userID|perms|transfer` — user access
+- `users:remove|userID` — remove user access
+- `users:update|userID|perms` — update user access
+- `users:transfer|userID` — transfer ownership
+- `sending:type|true|false` — sending settings
+- `delete-command:command` — delete queued command
+- `upgrade:architecture` — upgrade client binary
+- `initial-state:policy` — set initial state policy
+
+**Errors:**
+- `400` — Device ID is required / Command is required / invalid command format / Unknown command
+- `403` — Permission denied / need 'danger' right required to queue commands
+- `404` — Device not found
+- `500` — Error with MQTT / Failed to marshal commands / Failed to update device
+- `503` — Device is offline and command could not be sent
+
 ---
 
 ### `/devices/schedule` — Scheduler
@@ -540,6 +991,19 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
+**Add with absolute timestamp:**
+```json
+{
+    "endpoint": "/devices/schedule",
+    "data": {
+        "action": "add",
+        "deviceId": "7LgjUE6hcgYawTjj",
+        "command": "reboot",
+        "scheduleAt": 1234567890000
+    }
+}
+```
+
 **Remove:**
 ```json
 {
@@ -552,47 +1016,33 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
----
-
-### `/devices/tokens/refresh` — Refresh Tokens
-
+**Response (add):**
 ```json
 {
-    "endpoint": "/devices/tokens/refresh",
-    "data": {}
+    "success": true,
+    "message": "Command scheduled for 2024-01-01T12:00:00Z",
+    "scheduledId": "sched_123",
+    "scheduleAt": 1234567890000,
+    "command": "reboot",
+    "deviceId": "7LgjUE6hcgYawTjj",
+    "requestId": "cmd_123",
+    "executesIn": 3600000
 }
 ```
 
----
+**Limits:**
+- Max schedule delay: 7 days
+- Cannot schedule in the past
 
-### `/devices/tokens/policy` — Token Policy
-
-```json
-{
-    "endpoint": "/devices/tokens/policy",
-    "data": {
-        "action": "update",
-        "allow_url_token": true,
-        "allowed_platforms": {
-            "linux": true,
-            "windows": true,
-            "android": true
-        },
-        "time_restrictions": {
-            "enabled": true,
-            "limit_minutes": 5
-        },
-        "usage_restrictions": {
-            "enabled": true,
-            "max_uses": 5
-        }
-    }
-}
-```
+**Errors:**
+- `400` — deviceId is required / command is required / scheduleAt or delaySeconds is required / Cannot schedule command in the past / Maximum schedule delay is 7 days / scheduledId is required / Unknown action. Use: add, remove
+- `403` — Permission denied: need 'danger' right
+- `404` — Device not found / No scheduled commands found / Scheduled command N not found
+- `500` — Failed to parse scheduled commands
 
 ---
 
-## 4.5. Terminal
+## 4.6. Terminal
 
 ### `/devices/terminal` — Terminal Management
 
@@ -645,9 +1095,19 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
+**Limits:**
+- Max terminal input: 4KB per message
+
+**Errors:**
+- `400` — Device ID is required / Session ID is required / Data is required / Unknown terminal action
+- `403` — Permission denied: need 'terminal' right
+- `404` — Device is offline / Terminal session not found
+- `413` — Terminal input too large (max 4KB)
+- `500` — Failed to start terminal on device / Failed to send terminal input / Failed to resize terminal
+
 ---
 
-## 4.6. Files
+## 4.7. Files
 
 ### `/file/upload` — Upload File
 
@@ -671,6 +1131,13 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
+**Errors:**
+- `400` — deviceId is required / path is required / invalid file path / invalid filename
+- `403` — Permission denied: need 'danger' or 'manage' right
+- `404` — Device not found
+- `500` — Failed to send command to device
+- `503` — Device is offline
+
 ---
 
 ### `/file/download` — Download File
@@ -686,6 +1153,23 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Download session created, waiting for device",
+    "sessionId": "download_456",
+    "requestId": "download_123"
+}
+```
+
+**Errors:**
+- `400` — deviceId is required / path is required / invalid file path
+- `403` — Permission denied: need 'danger', 'manage' or 'explorer' right
+- `404` — Device not found
+- `500` — Failed to send command to device
+- `503` — Device is offline
+
 ---
 
 ### `/file/cancel` — Cancel Transfer
@@ -700,9 +1184,24 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Transfer cancelled",
+    "sessionId": "upload_456",
+    "requestId": "cancel_123"
+}
+```
+
+**Errors:**
+- `400` — sessionId is required
+- `403` — Permission denied
+- `404` — Session not found
+
 ---
 
-## 4.7. Settings
+## 4.8. Settings
 
 ### `/settings/global` — Global Settings
 
@@ -715,22 +1214,15 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
----
-
-### `/auth/session/longlived` — Long-Lived Session
-
-```json
-{
-    "endpoint": "/auth/session/longlived",
-    "data": {
-        "long_lived": true
-    }
-}
-```
+**Errors:**
+- `400` — global_devices is required
+- `403` — Admin privileges required
+- `404` — User not found
+- `500` — Failed to update settings
 
 ---
 
-## 4.8. Notifications
+## 4.9. Notifications
 
 ### `/notify` — Notification Settings
 
@@ -773,9 +1265,20 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
+**Available settings keys:**
+- `device_online`, `device_offline`, `new_device_added`, `device_renamed`, `device_deleted`
+- `login_successful`, `login_failed`, `password_changed`, `username_changed`, `2fa_changed`
+- `cpu_high_usage`, `memory_high_usage`, `disk_almost_full`, `temperature_high`, `battery_low`
+- `api_key_created_delete`, `api_key_updated`, `api_key_used`
+- `device_token_updated`, `access_policy_updated`
+
+**Errors:**
+- `400` — Subscription data required / Settings data required / No valid settings to update / Unknown action. Use: subscribe, unsubscribe, update
+- `500` — Failed to marshal subscription / Failed to save subscription / Failed to remove subscription / Failed to update settings
+
 ---
 
-## 4.9. API Keys
+## 4.10. API Keys
 
 ### `/keys` — API Key Management
 
@@ -803,6 +1306,20 @@ WebSocket is used for real-time communication between the browser and the server
             "send_commands": true,
             "device_management": false
         }
+    }
+}
+```
+
+**Create SSH key:**
+```json
+{
+    "endpoint": "/keys",
+    "data": {
+        "action": "create",
+        "name": "My SSH Key",
+        "type": "ssh",
+        "expiry_days": 30,
+        "permissions": { ... }
     }
 }
 ```
@@ -842,9 +1359,23 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
+**Available permissions:**
+- `device_info`, `send_commands`, `device_management`, `device_tokens`, `reset_tokens`
+- `access_proxy`, `security_user`, `privileged_access`, `device_groups`
+
+**Limits:**
+- Max 10 API keys per user
+- Max API keys per user (configurable, `max_api_keys`)
+
+**Errors:**
+- `400` — key type is required / invalid key type / API key with name already exists / expiry days cannot be negative / maximum 10 API keys per user / invalid API key name / API key ID is required / Invalid API key ID format / Invalid permission
+- `403` — Creating API keys is disabled for this user / Access denied
+- `404` — User not found / API key not found
+- `500` — failed to generate SSH key pair / failed to parse public key / failed to save API key / failed to marshal permissions / Failed to toggle API key
+
 ---
 
-## 4.10. Logs
+## 4.11. Logs
 
 ### `/logs` — Log Management
 
@@ -861,7 +1392,16 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
-**Delete:**
+**Log types:**
+- `commands` — device commands
+- `auth` — authentication
+- `2fa` — TOTP/WebAuthn changes
+- `devices` — device management
+- `api_keys` — API key management
+- `sessions` — session management
+- `webhooks` — webhook calls
+
+**Delete (admin only):**
 ```json
 {
     "endpoint": "/logs",
@@ -873,9 +1413,15 @@ WebSocket is used for real-time communication between the browser and the server
 }
 ```
 
+**Errors:**
+- `400` — Timestamp is required / User ID is required / Unknown action. Use: list, remove
+- `403` — Admin privileges required
+- `404` — User not found / log not found
+- `500` — failed to get logs
+
 ---
 
-## 4.11. Server → Client Messages
+## 4.12. Server → Client Messages
 
 **Response Types:**
 
@@ -894,6 +1440,18 @@ WebSocket is used for real-time communication between the browser and the server
 | `file/download/complete` | Download completed |
 | `file/download/error` | Download error |
 | `file/cancel/complete` | Cancellation completed |
+| `quick_login_cancelled` | Quick login cancelled |
+| `stream_started` | Stream started |
+| `stream_stopped` | Stream stopped |
+| `stream_ready` | Stream ready |
+| `stream_error` | Stream error |
+| `groups:created` | Group created |
+| `groups:updated` | Group updated |
+| `groups:deleted` | Group deleted |
+| `groups:assigned` | Devices assigned to groups |
+| `groups:unassigned` | Devices unassigned from groups |
+| `groups:reordered` | Groups reordered |
+| `error` | Error message |
 
 **Example notification:**
 ```json
@@ -905,6 +1463,22 @@ WebSocket is used for real-time communication between the browser and the server
     "requestId": "cmd_123",
     "command": "reboot",
     "deviceId": "7LgjUE6hcgYawTjj"
+}
+```
+
+**Example groups event:**
+```json
+{
+    "type": "groups:created",
+    "payload": {
+        "group": {
+            "id": "grp_1234567890_abc12",
+            "name": "My Devices",
+            "color": "#bb86fc",
+            "icon": "fa-folder",
+            "createdAt": 1234567890
+        }
+    }
 }
 ```
 
