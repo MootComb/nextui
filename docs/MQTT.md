@@ -120,7 +120,6 @@ mosquitto_pub -t "devices/7LgjUE6hcgYawTjj/command" \
 **Topic:** `devices/{device_id}/update`
 **Type:** `terminal_output`
 
-**New format (preferred):**
 ```json
 {
     "type": "terminal_output",
@@ -130,15 +129,9 @@ mosquitto_pub -t "devices/7LgjUE6hcgYawTjj/command" \
 }
 ```
 
-**Old format (backward compatibility):**
-```json
-{
-    "type": "terminal_output",
-    "data": {
-        "session_id": "term_123",
-        "output_data": "uid=0(root) gid=0(root)"
-    }
-}
+**Format:**
+```
+terminal_output|{session_id}|{output_data}
 ```
 
 ---
