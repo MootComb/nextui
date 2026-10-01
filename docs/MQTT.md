@@ -120,6 +120,17 @@ mosquitto_pub -t "devices/7LgjUE6hcgYawTjj/command" \
 **Topic:** `devices/{device_id}/update`
 **Type:** `terminal_output`
 
+**New format (preferred):**
+```json
+{
+    "type": "terminal_output",
+    "data": {
+        "command": "terminal_output|term_123|uid=0(root) gid=0(root)"
+    }
+}
+```
+
+**Old format (backward compatibility):**
 ```json
 {
     "type": "terminal_output",
@@ -186,7 +197,214 @@ Automatically sent when the connection is lost
 
 ---
 
-### 3.7. System Topics
+#### 3.7. Terminal Commands
+
+**Topic:** `devices/{device_id}/command`
+**Direction:** Server → Device
+
+**Start terminal:**
+```json
+{
+    "type": "command",
+    "command": "terminal|term_123|start|80|24"
+}
+```
+
+**Input:**
+```json
+{
+    "type": "command",
+    "command": "terminal|term_123|input|ls -la\n"
+}
+```
+
+**Resize:**
+```json
+{
+    "type": "command",
+    "command": "terminal|term_123|resize|120|30"
+}
+```
+
+**Stop:**
+```json
+{
+    "type": "command",
+    "command": "terminal|term_123|stop"
+}
+```
+
+**Format:**
+```
+terminal|{session_id}|start|{cols}|{rows}
+terminal|{session_id}|input|{data}
+terminal|{session_id}|resize|{cols}|{rows}
+terminal|{session_id}|stop
+```
+
+---
+
+#### 3.8. Stream Commands
+
+**Topic:** `devices/{device_id}/command`
+**Direction:** Server → Device
+
+**Start stream:**
+```json
+{
+    "type": "command",
+    "command": "stream:share-screen:on",
+    "sessionId": "stream_abc",
+    "turnConfig": {
+        "iceServers": [
+            {
+                "urls": [
+                    "stun:turn.example.com:3478",
+                    "turn:turn.example.com:3478",
+                    "turn:turn.example.com:5349?transport=tcp"
+                ],
+                "username": "1234567890:stream_abc",
+                "password": "base64_hmac_sha1"
+            }
+        ]
+    },
+    "requestId": "req_123"
+}
+```
+
+**Stop stream:**
+```json
+{
+    "type": "command",
+    "command": "stream:share-screen:off",
+    "sessionId": "stream_abc",
+    "requestId": "req_123"
+}
+```
+
+**Stream types:** `share-screen`, `watch-screen`, `control-screen`
+
+---
+
+#### 3.9. File Transfer Commands
+
+**Topic:** `devices/{device_id}/command`
+**Direction:** Server → Device
+
+**Upload:**
+```json
+{
+    "type": "command",
+    "command": "file:upload|sess_123|https://server/upload/sess_123|/path/file.txt",
+    "requestId": "req_123"
+}
+```
+
+**Download:**
+```json
+{
+    "type": "command",
+    "command": "file:download|sess_123|https://server/download/sess_123|/path/file.txt",
+    "requestId": "req_123"
+}
+```
+
+**Cancel:**
+```json
+{
+    "type": "command",
+    "command": "file:cancel|sess_123"
+}
+```
+
+**Format:**
+```
+file:upload|{session_id}|{upload_url}|{path}
+file:download|{session_id}|{download_url}|{path}
+file:cancel|{session_id}
+```
+
+---
+
+#### 3.10. SSH Tunnel Protocol
+
+**Topic:** `devices/{device_id}/command`
+**Direction:** Server → Device
+
+**Start SSH tunnel:**
+```json
+{
+    "type": "command",
+    "command": "start-ssh",
+    "requestId": "tunnel_123"
+}
+```
+
+**Device response (device → server, via device channel):**
+
+On success:
+```
+CONNECTED TO {target}
+```
+
+On error:
+```
+ERROR:{message}
+```
+
+**Target directive (server → device, before piping):**
+```
+TARGET:{target}\n
+```
+
+---
+
+#### 3.11. Ping / Pong
+
+**Ping (server → device):**
+```json
+{
+    "type": "command",
+    "command": "ping",
+    "requestId": "ping-1234567890-device_id"
+}
+```
+
+**Pong (device → server):**
+```json
+{
+    "type": "command_response",
+    "data": {
+        "command": "pong",
+        "requestId": "ping-1234567890-device_id",
+        "success": true
+    }
+}
+```
+
+---
+
+#### 3.12. Upgrade Command
+
+**Topic:** `devices/{device_id}/command`
+**Direction:** Server → Device
+
+```json
+{
+    "type": "command",
+    "command": "upgrade:{size}:{base64_data}",
+    "requestId": "req_123"
+}
+```
+
+- `{size}` — binary file size in bytes
+- `{base64_data}` — file content encoded as base64
+
+On success the device sends `command_response` with `success: true`, after which the server marks the device as offline.
+
+---
+
+#### 3.13. System Topics
 
 | Topic | Description |
 |-------|----------|
@@ -198,3 +416,49 @@ Automatically sent when the connection is lost
 | `$SYS/broker/messages/received` | Messages received |
 | `$SYS/broker/load/messages/received/1min` | Load over 1 minute |
 | `$SYS/broker/load/connections/1min` | Connection load |
+
+> Incoming messages on `$SYS/*` and `$CONTROL/*` topics are ignored by the server.
+
+---
+
+### Topic Validation & Limits
+
+**Device ID format:**
+- Must match `[a-zA-Z0-9_-]{12,20}`
+- Recommended: 16 characters (base64url of 12 random bytes)
+
+**Topic whitelist:**
+```
+^devices/[a-zA-Z0-9_-]{12,}/update$
+^devices/[a-zA-Z0-9_-]{12,}/command$
+^devices/[a-zA-Z0-9_-]{12,}/status$
+^\$CONTROL/dynamic-security/v1$
+^\$SYS/.*$
+```
+
+**Message size limit:** 10 MB
+
+---
+
+### Supported Message Types
+
+| Type | Direction | Description |
+|------|-----------|-------------|
+| `device_update` | Device → Server | Device metrics update |
+| `command_response` | Device → Server | Response to a command |
+| `terminal_output` | Device → Server | Terminal output data |
+| `device_offline` | Device → Server | Device going offline |
+
+> Any other `type` is logged as warning and ignored.
+
+---
+
+### MQTT Roles
+
+The broker must have a pre-created role named `device` with the appropriate ACL for the following topics:
+
+- `devices/{device_id}/update` (write)
+- `devices/{device_id}/command` (read)
+- `devices/{device_id}/status` (write)
+
+Authentication uses username/password stored in the `device:{id}` hash (`mqtt_username`, `mqtt_password`).
