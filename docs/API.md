@@ -142,7 +142,6 @@ Sends a command to a device.
 | `recovery` | Boot into Recovery |
 | `fastboot` | Boot into Fastboot |
 | `odin` | Boot into Odin |
-| `safe` | Safe mode |
 
 #### Updates
 | Command | Description |
@@ -169,8 +168,6 @@ Sends a command to a device.
 |---------|-------------|
 | `media:play` | Play |
 | `media:pause` | Pause |
-| `media:next` | Next track |
-| `media:prev` | Previous track |
 | `media-seek:0-100` | Seek (in percent) |
 
 #### Terminal
@@ -240,6 +237,14 @@ Sends a command to a device.
 |---------|-------------|
 | `webhook:add\|command` | Create webhook with command |
 | `webhook:remove\|webhook_id` | Remove webhook |
+
+#### Users Access
+| Command | Description |
+|---------|-------------|
+| `users:add\|user_id\|permissions\|transfer` | Add user access |
+| `users:remove\|user_id` | Remove user access |
+| `users:update\|user_id\|permissions` | Update user access |
+| `users:transfer\|user_id` | Transfer ownership |
 
 #### Miscellaneous
 | Command | Description |
@@ -393,10 +398,12 @@ Sends a command to a device.
 | `message` | string | Yes | Notification text (max. 500 characters) |
 | `user_id` | int | Conditional | User ID to send to |
 | `ws_connection_id` | string | Conditional | WebSocket connection ID |
-| `title` | string | No | Notification title (max. 100 characters) |
-| `notification_type` | string | No | Type (info, success, warning, error) |
-| `duration` | int | No | Display duration (ms, max. 30000) |
+| `title` | string | No | Notification title (max. 100 characters, default: `"Admin Notification"`) |
+| `notification_type` | string | No | Type (`info`, `success`, `warning`, `error`; default: `"info"`) |
+| `duration` | int | No | Display duration (ms, max. 30000, default: `5000`) |
 | `send_push` | bool | No | Send push notification |
+
+> Either `user_id` or `ws_connection_id` is required.
 
 **Example request:**
 ```json
@@ -425,6 +432,252 @@ Sends a command to a device.
 }
 ```
 
+**target_type values:**
+- `"user"` — notification sent to all connections of the user (via `user_id`)
+- `"connection"` — notification sent to a specific connection (via `ws_connection_id`)
+
+---
+
+### 8. Groups
+
+### 8.1. List Groups
+
+**Action:** `groups_list`
+
+**Required permission:** `device_groups` or `privileged_access`
+
+**Example request:**
+```json
+{
+    "token": "your_api_key",
+    "action": "groups_list"
+}
+```
+
+**Example response:**
+```json
+{
+    "success": true,
+    "groups": [
+        {
+            "id": "grp_1234567890_abc12",
+            "name": "My Devices",
+            "color": "#bb86fc",
+            "icon": "fa-folder",
+            "createdAt": 1234567890
+        }
+    ],
+    "deviceGroups": {
+        "device_id_1": ["grp_1", "grp_2"]
+    },
+    "order": ["grp_1", "grp_2"]
+}
+```
+
+---
+
+### 8.2. Create Group
+
+**Action:** `groups_create`
+
+**Required permission:** `device_groups` or `privileged_access`
+
+**Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | Yes | Group name (max. 32 chars) |
+| `color` | string | No | Hex color (default: `#bb86fc`) |
+| `icon` | string | No | FontAwesome icon name (default: `fa-folder`) |
+
+**Example request:**
+```json
+{
+    "token": "your_api_key",
+    "action": "groups_create",
+    "data": {
+        "name": "My Devices",
+        "color": "#bb86fc",
+        "icon": "fa-folder"
+    }
+}
+```
+
+**Example response:**
+```json
+{
+    "success": true,
+    "group": {
+        "id": "grp_1234567890_abc12",
+        "name": "My Devices",
+        "color": "#bb86fc",
+        "icon": "fa-folder",
+        "createdAt": 1234567890
+    }
+}
+```
+
+---
+
+### 8.3. Update Group
+
+**Action:** `groups_update`
+
+**Required permission:** `device_groups` or `privileged_access`
+
+**Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `groupId` | string | Yes | Group ID |
+| `name` | string | No | New name |
+| `color` | string | No | New hex color |
+| `icon` | string | No | New FontAwesome icon |
+
+**Example request:**
+```json
+{
+    "token": "your_api_key",
+    "action": "groups_update",
+    "data": {
+        "groupId": "grp_1234567890_abc12",
+        "name": "New Name"
+    }
+}
+```
+
+**Example response:**
+```json
+{
+    "success": true,
+    "group": {
+        "id": "grp_1234567890_abc12",
+        "name": "New Name",
+        "color": "#bb86fc",
+        "icon": "fa-folder",
+        "createdAt": 1234567890
+    }
+}
+```
+
+---
+
+### 8.4. Delete Group
+
+**Action:** `groups_delete`
+
+**Required permission:** `device_groups` or `privileged_access`
+
+**Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `groupId` | string | Yes | Group ID |
+
+**Example request:**
+```json
+{
+    "token": "your_api_key",
+    "action": "groups_delete",
+    "data": {
+        "groupId": "grp_1234567890_abc12"
+    }
+}
+```
+
+**Example response:**
+```json
+{
+    "success": true,
+    "groupId": "grp_1234567890_abc12",
+    "affectedDevices": ["device1", "device2"]
+}
+```
+
+---
+
+### 8.5. Assign Devices to Groups
+
+**Action:** `groups_assign`
+
+**Required permission:** `device_groups` or `privileged_access`
+
+**Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `deviceId` | string | Conditional | Single device ID |
+| `deviceIds` | array | Conditional | Multiple device IDs |
+| `groupId` | string | Conditional | Single group ID |
+| `groupIds` | array | Conditional | Multiple group IDs |
+
+> Either `deviceId` or `deviceIds` is required. Either `groupId` or `groupIds` is required.
+
+**Limits:** Max 100 devices, max 10 groups per request.
+
+**Example request:**
+```json
+{
+    "token": "your_api_key",
+    "action": "groups_assign",
+    "data": {
+        "deviceIds": ["device1", "device2"],
+        "groupIds": ["grp_1", "grp_2"]
+    }
+}
+```
+
+**Example response:**
+```json
+{
+    "success": true,
+    "assigned": [
+        { "deviceId": "device1", "groupId": "grp_1" }
+    ],
+    "failed": [
+        { "deviceId": "device2", "groupId": "grp_2", "error": "Device not found" }
+    ]
+}
+```
+
+---
+
+### 8.6. Unassign Devices from Groups
+
+**Action:** `groups_unassign`
+
+**Required permission:** `device_groups` or `privileged_access`
+
+**Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `deviceId` | string | Conditional | Single device ID |
+| `deviceIds` | array | Conditional | Multiple device IDs |
+| `groupId` | string | Conditional | Single group ID |
+| `groupIds` | array | Conditional | Multiple group IDs |
+
+> Either `deviceId` or `deviceIds` is required. Either `groupId` or `groupIds` is required.
+
+**Limits:** Max 100 devices, max 10 groups per request.
+
+**Example request:**
+```json
+{
+    "token": "your_api_key",
+    "action": "groups_unassign",
+    "data": {
+        "deviceIds": ["device1", "device2"],
+        "groupIds": ["grp_1", "grp_2"]
+    }
+}
+```
+
+**Example response:**
+```json
+{
+    "success": true,
+    "unassigned": [
+        { "deviceId": "device1", "groupId": "grp_1" }
+    ]
+}
+```
+
 ---
 
 ## API Key Permissions
@@ -441,6 +694,7 @@ The following permissions can be assigned when creating an API key:
 | `access_proxy` | Access proxy functions |
 | `security_user` | Manage user security |
 | `privileged_access` | Privileged access (administrative functions) |
+| `device_groups` | Manage device groups |
 
 ---
 
@@ -482,6 +736,17 @@ curl -X POST https://your-server.com/api \
       "command": "reboot"
     }
   }'
+
+# Create a group
+curl -X POST https://your-server.com/api \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "your_api_key",
+    "action": "groups_create",
+    "data": {
+      "name": "My Devices"
+    }
+  }'
 ```
 
 ### Python
@@ -499,6 +764,16 @@ def send_command(device_id, command):
         "data": {
             "deviceId": device_id,
             "command": command
+        }
+    })
+    return response.json()
+
+def create_group(name):
+    response = requests.post(API_URL, json={
+        "token": API_TOKEN,
+        "action": "groups_create",
+        "data": {
+            "name": name
         }
     })
     return response.json()
@@ -524,6 +799,18 @@ async function getDevices() {
     return response.data;
 }
 
+async function assignDevicesToGroups(deviceIds, groupIds) {
+    const response = await axios.post(API_URL, {
+        token: API_TOKEN,
+        action: 'groups_assign',
+        data: {
+            deviceIds: deviceIds,
+            groupIds: groupIds
+        }
+    });
+    return response.data;
+}
+
 // Usage example
 getDevices().then(data => console.log(data));
 ```
@@ -536,3 +823,4 @@ getDevices().then(data => console.log(data));
 |------------|-------|
 | Maximum request size | 1 MB |
 | Maximum command length | 4096 characters |
+| Maximum group name length | 32 characters |
